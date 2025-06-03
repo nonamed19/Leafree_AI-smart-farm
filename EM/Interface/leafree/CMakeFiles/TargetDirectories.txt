@@ -1,0 +1,5 @@
+/home/ssafy/S12P31A402/EM/Interface/leafree/CMakeFiles/leafree.dir
+/home/ssafy/S12P31A402/EM/Interface/leafree/CMakeFiles/leafree_other_files.dir
+/home/ssafy/S12P31A402/EM/Interface/leafree/CMakeFiles/edit_cache.dir
+/home/ssafy/S12P31A402/EM/Interface/leafree/CMakeFiles/rebuild_cache.dir
+/home/ssafy/S12P31A402/EM/Interface/leafree/CMakeFiles/leafree_autogen.dir

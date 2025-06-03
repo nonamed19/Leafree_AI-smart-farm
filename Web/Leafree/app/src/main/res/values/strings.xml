@@ -1,0 +1,7 @@
+<resources>
+    <string name="app_name">Leafree</string>
+    <!-- res/values/strings.xml -->
+    <string name="channel_name_notify">일반 알림</string>
+    <string name="channel_name_warning">경고 알림</string>
+
+</resources>

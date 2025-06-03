@@ -1,0 +1,14 @@
+<RCC>
+  <qresource prefix="/">
+    <file alias="src/leafree_logo.png">/home/ssafy/S12P31A402/EM/Interface/leafree/src/leafree_logo.png</file>
+    <file alias="src/lettuce.jpg">/home/ssafy/S12P31A402/EM/Interface/leafree/src/lettuce.jpg</file>
+    <file alias="src/microphone.png">/home/ssafy/S12P31A402/EM/Interface/leafree/src/microphone.png</file>
+    <file alias="src/temperature.png">/home/ssafy/S12P31A402/EM/Interface/leafree/src/temperature.png</file>
+    <file alias="src/humidity.png">/home/ssafy/S12P31A402/EM/Interface/leafree/src/humidity.png</file>
+    <file alias="src/lamp.png">/home/ssafy/S12P31A402/EM/Interface/leafree/src/lamp.png</file>
+    <file alias="src/skin.png">/home/ssafy/S12P31A402/EM/Interface/leafree/src/skin.png</file>
+    <file alias="src/depth.png">/home/ssafy/S12P31A402/EM/Interface/leafree/src/depth.png</file>
+    <file alias="src/co2-cloud.png">/home/ssafy/S12P31A402/EM/Interface/leafree/src/co2-cloud.png</file>
+  </qresource>
+</RCC>
+

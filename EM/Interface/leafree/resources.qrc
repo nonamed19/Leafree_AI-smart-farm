@@ -1,0 +1,13 @@
+<RCC>
+    <qresource prefix="/">
+        <file>src/leafree_logo.png</file>
+        <file>src/lettuce.jpg</file>
+        <file>src/humidity.png</file>
+        <file>src/lamp.png</file>
+        <file>src/microphone.png</file>
+        <file>src/skin.png</file>
+        <file>src/temperature.png</file>
+        <file>src/depth.png</file>
+        <file>src/co2-cloud.png</file>
+    </qresource>
+</RCC>

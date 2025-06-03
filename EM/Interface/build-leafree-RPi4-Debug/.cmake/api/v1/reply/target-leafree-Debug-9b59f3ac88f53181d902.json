@@ -1,0 +1,302 @@
+{
+	"artifacts" : 
+	[
+		{
+			"path" : "leafree"
+		}
+	],
+	"backtrace" : 4,
+	"backtraceGraph" : 
+	{
+		"commands" : 
+		[
+			"add_executable",
+			"_qt_internal_create_executable",
+			"qt6_add_executable",
+			"qt_add_executable",
+			"target_link_libraries"
+		],
+		"files" : 
+		[
+			"/home/ssafy/qt-raspi/lib/cmake/Qt6Core/Qt6CoreMacros.cmake",
+			"CMakeLists.txt"
+		],
+		"nodes" : 
+		[
+			{
+				"file" : 1
+			},
+			{
+				"command" : 3,
+				"file" : 1,
+				"line" : 25,
+				"parent" : 0
+			},
+			{
+				"command" : 2,
+				"file" : 0,
+				"line" : 713,
+				"parent" : 1
+			},
+			{
+				"command" : 1,
+				"file" : 0,
+				"line" : 550,
+				"parent" : 2
+			},
+			{
+				"command" : 0,
+				"file" : 0,
+				"line" : 586,
+				"parent" : 3
+			},
+			{
+				"command" : 4,
+				"file" : 1,
+				"line" : 47,
+				"parent" : 0
+			},
+			{
+				"command" : 4,
+				"file" : 0,
+				"line" : 551,
+				"parent" : 2
+			}
+		]
+	},
+	"compileGroups" : 
+	[
+		{
+			"compileCommandFragments" : 
+			[
+				{
+					"fragment" : " -I/home/ssafy/rpi-sysroot/usr/include -g"
+				},
+				{
+					"fragment" : "-std=gnu++17"
+				}
+			],
+			"defines" : 
+			[
+				{
+					"backtrace" : 6,
+					"define" : "QT_CORE_LIB"
+				},
+				{
+					"backtrace" : 5,
+					"define" : "QT_GUI_LIB"
+				},
+				{
+					"backtrace" : 5,
+					"define" : "QT_WIDGETS_LIB"
+				}
+			],
+			"includes" : 
+			[
+				{
+					"path" : "/home/ssafy/S12P31A402/EM/Interface/build-leafree-RPi4-Debug"
+				},
+				{
+					"path" : "/home/ssafy/S12P31A402/EM/Interface/leafree"
+				},
+				{
+					"backtrace" : 0,
+					"path" : "/home/ssafy/S12P31A402/EM/Interface/build-leafree-RPi4-Debug/leafree_autogen/include"
+				},
+				{
+					"backtrace" : 6,
+					"isSystem" : true,
+					"path" : "/home/ssafy/qt-raspi/include/QtCore"
+				},
+				{
+					"backtrace" : 6,
+					"isSystem" : true,
+					"path" : "/home/ssafy/qt-raspi/include"
+				},
+				{
+					"backtrace" : 6,
+					"isSystem" : true,
+					"path" : "/home/ssafy/qt-raspi/mkspecs/devices/linux-rasp-pi4-aarch64"
+				},
+				{
+					"backtrace" : 5,
+					"isSystem" : true,
+					"path" : "/home/ssafy/qt-raspi/include/QtWidgets"
+				},
+				{
+					"backtrace" : 5,
+					"isSystem" : true,
+					"path" : "/home/ssafy/qt-raspi/include/QtGui"
+				}
+			],
+			"language" : "CXX",
+			"languageStandard" : 
+			{
+				"backtraces" : 
+				[
+					6
+				],
+				"standard" : "17"
+			},
+			"sourceIndexes" : 
+			[
+				0,
+				1,
+				2
+			],
+			"sysroot" : 
+			{
+				"path" : "/home/ssafy/rpi-sysroot"
+			}
+		}
+	],
+	"dependencies" : 
+	[
+		{
+			"id" : "leafree_autogen_timestamp_deps::@6890427a1f51a3e7e1df"
+		},
+		{
+			"backtrace" : 0,
+			"id" : "leafree_autogen::@6890427a1f51a3e7e1df"
+		}
+	],
+	"id" : "leafree::@6890427a1f51a3e7e1df",
+	"link" : 
+	{
+		"commandFragments" : 
+		[
+			{
+				"fragment" : "-I/home/ssafy/rpi-sysroot/usr/include -g",
+				"role" : "flags"
+			},
+			{
+				"fragment" : "-Wl,-O1 -Wl,--hash-style=gnu -Wl,--as-needed -ldbus-1",
+				"role" : "flags"
+			},
+			{
+				"fragment" : "-Wl,-rpath,/home/ssafy/rpi-sysroot:/home/ssafy/qt-raspi/lib",
+				"role" : "libraries"
+			},
+			{
+				"backtrace" : 5,
+				"fragment" : "/home/ssafy/qt-raspi/lib/libQt6Widgets.so.6.4.0",
+				"role" : "libraries"
+			},
+			{
+				"fragment" : "/home/ssafy/qt-raspi/lib/libQt6Gui.so.6.4.0",
+				"role" : "libraries"
+			},
+			{
+				"backtrace" : 6,
+				"fragment" : "/home/ssafy/qt-raspi/lib/libQt6Core.so.6.4.0",
+				"role" : "libraries"
+			},
+			{
+				"fragment" : "/home/ssafy/rpi-sysroot/usr/lib/aarch64-linux-gnu/libGLESv2.so",
+				"role" : "libraries"
+			},
+			{
+				"fragment" : "/home/ssafy/rpi-sysroot/usr/lib/aarch64-linux-gnu/libEGL.so",
+				"role" : "libraries"
+			}
+		],
+		"language" : "CXX",
+		"sysroot" : 
+		{
+			"path" : "/home/ssafy/rpi-sysroot"
+		}
+	},
+	"name" : "leafree",
+	"nameOnDisk" : "leafree",
+	"paths" : 
+	{
+		"build" : ".",
+		"source" : "."
+	},
+	"sourceGroups" : 
+	[
+		{
+			"name" : "Source Files",
+			"sourceIndexes" : 
+			[
+				0,
+				1,
+				2
+			]
+		},
+		{
+			"name" : "Header Files",
+			"sourceIndexes" : 
+			[
+				3,
+				5
+			]
+		},
+		{
+			"name" : "",
+			"sourceIndexes" : 
+			[
+				4,
+				6
+			]
+		},
+		{
+			"name" : "CMake Rules",
+			"sourceIndexes" : 
+			[
+				7
+			]
+		}
+	],
+	"sources" : 
+	[
+		{
+			"backtrace" : 0,
+			"compileGroupIndex" : 0,
+			"isGenerated" : true,
+			"path" : "/home/ssafy/S12P31A402/EM/Interface/build-leafree-RPi4-Debug/leafree_autogen/mocs_compilation.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 4,
+			"compileGroupIndex" : 0,
+			"path" : "main.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 4,
+			"compileGroupIndex" : 0,
+			"path" : "widget.cpp",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 4,
+			"path" : "widget.h",
+			"sourceGroupIndex" : 1
+		},
+		{
+			"backtrace" : 4,
+			"path" : "widget.ui",
+			"sourceGroupIndex" : 2
+		},
+		{
+			"backtrace" : 0,
+			"isGenerated" : true,
+			"path" : "/home/ssafy/S12P31A402/EM/Interface/build-leafree-RPi4-Debug/leafree_autogen/include/ui_widget.h",
+			"sourceGroupIndex" : 1
+		},
+		{
+			"backtrace" : 0,
+			"isGenerated" : true,
+			"path" : "/home/ssafy/S12P31A402/EM/Interface/build-leafree-RPi4-Debug/leafree_autogen/timestamp",
+			"sourceGroupIndex" : 2
+		},
+		{
+			"backtrace" : 0,
+			"isGenerated" : true,
+			"path" : "/home/ssafy/S12P31A402/EM/Interface/build-leafree-RPi4-Debug/leafree_autogen/timestamp.rule",
+			"sourceGroupIndex" : 3
+		}
+	],
+	"type" : "EXECUTABLE"
+}
