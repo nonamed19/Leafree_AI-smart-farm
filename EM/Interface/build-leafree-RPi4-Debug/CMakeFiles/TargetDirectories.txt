@@ -1,5 +1,0 @@
-/home/ssafy/S12P31A402/EM/Interface/build-leafree-RPi4-Debug/CMakeFiles/leafree.dir
-/home/ssafy/S12P31A402/EM/Interface/build-leafree-RPi4-Debug/CMakeFiles/edit_cache.dir
-/home/ssafy/S12P31A402/EM/Interface/build-leafree-RPi4-Debug/CMakeFiles/rebuild_cache.dir
-/home/ssafy/S12P31A402/EM/Interface/build-leafree-RPi4-Debug/CMakeFiles/leafree_autogen_timestamp_deps.dir
-/home/ssafy/S12P31A402/EM/Interface/build-leafree-RPi4-Debug/CMakeFiles/leafree_autogen.dir

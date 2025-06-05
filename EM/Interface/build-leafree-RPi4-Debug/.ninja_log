@@ -1,9 +1,0 @@
-# ninja log v5
-0	194	1746689543274000000	leafree_autogen/timestamp	cf881c473787ede1
-0	194	1746689543274000000	leafree_autogen/mocs_compilation.cpp	cf881c473787ede1
-0	194	1746689543274000000	/home/ssafy/S12P31A402/EM/Interface/build-leafree-RPi4-Debug/leafree_autogen/timestamp	cf881c473787ede1
-0	194	1746689543274000000	/home/ssafy/S12P31A402/EM/Interface/build-leafree-RPi4-Debug/leafree_autogen/mocs_compilation.cpp	cf881c473787ede1
-194	1305	1746689544384000000	CMakeFiles/leafree.dir/leafree_autogen/mocs_compilation.cpp.o	e2eb617679c931b0
-195	1379	1746689544459000000	CMakeFiles/leafree.dir/main.cpp.o	524354ad9ed78bfe
-195	1426	1746689544512000000	CMakeFiles/leafree.dir/widget.cpp.o	bfd3bc07e7e7c40f
-1426	1640	1746689544681000000	leafree	8036fcd67c82e4aa
