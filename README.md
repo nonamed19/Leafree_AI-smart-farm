@@ -1,7 +1,7 @@
 <div style="display: flex; align-items: center;">
   <div style="text-align : center">
     <img
-      src="docs/logo.png"
+      src="readimg/logo.png"
       width="100"
       alt="Leafree 로고"
     />
@@ -12,7 +12,7 @@
 </div>
 
 <p align="center">
-  <img src="docs/prototype.png" width="700" alt="프로토타입" />
+  <img src="readimg/prototype.png" width="700" alt="프로토타입" />
 </p>
 
 ## 프로젝트 소개
@@ -27,7 +27,7 @@ Leafree는 가정용 스마트팜 키트로, 사용자가 쉽고 재미있게 �
 ## 시스템 구성
 
 <p align="center">
-  <img src="docs/architecture.png" width="700" alt="아키텍처처" />
+  <img src="readimg/architecture.png" width="700" alt="아키텍처처" />
 </p>
 
 ## 주요 하드웨어
