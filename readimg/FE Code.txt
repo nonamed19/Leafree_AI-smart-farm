@@ -1,0 +1,800 @@
+```C:\Users\Chanho Kim_PC\Desktop\project\Leafree_AI_Smart_Farm\Web\Leafree\app\src\main\java\com\leafree\app\api\LeafreeApi.kt
+package com.leafree.app.api
+
+import com.leafree.app.model.CropInfo
+import com.leafree.app.model.EventResponse
+import com.leafree.app.model.SettingInfo
+import okhttp3.ResponseBody
+import retrofit2.Response
+import retrofit2.http.*
+
+/**
+ * Leafree 백엔드 서버와의 REST API 통신을 위한 인터페이스
+ * 모든 API 엔드포인트는 https://leafree.kr/api를 기본 URL로 사용
+ * 기기는 deviceId = 1 하나라 일단 mvp에서는 하드코딩
+ */
+interface LeafreeApi {
+    companion object {
+        const val BASE_URL = "https://leafree.kr/api/"
+    }
+
+    @POST("auth/login")
+    suspend fun login(@Body credentials: LoginRequest): LoginResponse
+
+    data class LoginRequest(
+        val email: String,
+        val password: String
+    )
+
+    data class LoginResponse(
+        val userId: String,
+        val accessToken: String
+    )
+
+    @GET("device/{deviceId}")
+    suspend fun getCropInfo(@Path("deviceId") deviceId: Long): CropInfo
+
+    @GET("device/{deviceId}/image")
+    suspend fun getCropImage(@Path("deviceId") deviceId: Long): ResponseBody
+
+    @GET("device/{deviceId}/setting")
+    suspend fun getSettings(@Path("deviceId") deviceId: Long): SettingInfo
+
+    @PATCH("device/{deviceId}/setting")
+    suspend fun updateSetting(
+        @Path("deviceId") deviceId: Long,
+        @Body setting: SettingInfo
+    )
+
+    @GET("device/{deviceId}/event")
+    suspend fun getEvents(@Path("deviceId") deviceId: Long, @Query("date") date: String): List<EventResponse>
+
+    @POST("/api/device/{deviceId}/fcm-token")
+    suspend fun sendFcmToken(
+        @Path("deviceId") deviceId: Long,
+        @Body token: FcmTokenRequest
+    ): Response<Unit>
+
+    data class FcmTokenRequest(
+        val fcmToken: String
+    )
+
+}
+```
+```C:\Users\Chanho Kim_PC\Desktop\project\Leafree_AI_Smart_Farm\Web\Leafree\app\src\main\java\com\leafree\app\di\NetworkModule.kt
+package com.leafree.app.di
+
+import android.content.Context
+import com.leafree.app.api.LeafreeApi
+import com.leafree.app.network.AuthInterceptor
+import com.leafree.app.util.TokenManager
+import okhttp3.OkHttpClient
+import okhttp3.logging.HttpLoggingInterceptor
+import retrofit2.Retrofit
+import retrofit2.converter.gson.GsonConverterFactory
+
+object NetworkModule {
+    private var retrofit: Retrofit? = null
+    private var api: LeafreeApi? = null
+
+    fun provideApi(context: Context): LeafreeApi {
+        if (api != null) return api!!
+
+        val tokenManager = TokenManager(context)
+        val logging = HttpLoggingInterceptor().apply { 
+            level = HttpLoggingInterceptor.Level.BODY 
+        }
+
+        val client = OkHttpClient.Builder()
+            .addInterceptor(AuthInterceptor(tokenManager))
+            .addInterceptor(logging)
+            .build()
+
+        retrofit = Retrofit.Builder()
+            .baseUrl(LeafreeApi.BASE_URL)
+            .client(client)
+            .addConverterFactory(GsonConverterFactory.create())
+            .build()
+
+        api = retrofit!!.create(LeafreeApi::class.java)
+        return api!!
+    }
+}
+```
+```C:\Users\Chanho Kim_PC\Desktop\project\Leafree_AI_Smart_Farm\Web\Leafree\app\src\main\java\com\leafree\app\model\CropInfo.kt
+package com.leafree.app.model
+
+data class CropInfo(
+    val cropId: Long,
+    val cropType: String,
+    val cropImage: String,
+    val createdAt : String,
+    val harvestedAt : String?
+)
+```
+```C:\Users\Chanho Kim_PC\Desktop\project\Leafree_AI_Smart_Farm\Web\Leafree\app\src\main\java\com\leafree\app\model\EventResponse.kt
+package com.leafree.app.model
+
+import com.google.gson.annotations.SerializedName
+
+data class EventResponse(
+    @SerializedName("eventType") val eventType: String,
+    @SerializedName("code") val eventContentCode: String,
+    @SerializedName("occurredAt") val occuredAt: String,
+    @SerializedName("eventData") val eventData: Map<String, Any>
+)
+```
+```C:\Users\Chanho Kim_PC\Desktop\project\Leafree_AI_Smart_Farm\Web\Leafree\app\src\main\java\com\leafree\app\model\SensorInfo.kt
+package com.leafree.app.model
+
+data class SensorInfo(
+    val type: String,
+    val value: String,
+    val unit: String
+)
+```
+```C:\Users\Chanho Kim_PC\Desktop\project\Leafree_AI_Smart_Farm\Web\Leafree\app\src\main\java\com\leafree\app\model\SensorLogDto.kt
+package com.leafree.app.model
+
+data class SensorLogDto(
+    val temperature: Float,
+    val humidity: Int,
+    val light: Int,
+    val co2Ppm: Int,
+    val waterLevel: Int,
+    val soilMoisture: Int
+)
+```
+```C:\Users\Chanho Kim_PC\Desktop\project\Leafree_AI_Smart_Farm\Web\Leafree\app\src\main\java\com\leafree\app\model\SettingInfo.kt
+package com.leafree.app.model
+
+data class SettingInfo(
+    val temperature: Double,
+    val humidity: Double,
+    val light: Double,
+    val co2Ppm: Double,
+    val soilHumidity: Double,
+    val lightDuration: Double,
+    val wateringInterval: Double
+)
+```
+```C:\Users\Chanho Kim_PC\Desktop\project\Leafree_AI_Smart_Farm\Web\Leafree\app\src\main\java\com\leafree\app\network\AuthInterceptor.kt
+package com.leafree.app.network
+
+import com.leafree.app.util.TokenManager
+import okhttp3.Interceptor
+import okhttp3.Response
+
+class AuthInterceptor(private val tokenManager: TokenManager) : Interceptor {
+    override fun intercept(chain: Interceptor.Chain): Response {
+        val token = tokenManager.getToken()
+        val requestBuilder = chain.request().newBuilder()
+        token?.let {
+            requestBuilder.addHeader("Authorization", "Bearer $it")
+        }
+        return chain.proceed(requestBuilder.build())
+    }
+}
+```
+```C:\Users\Chanho Kim_PC\Desktop\project\Leafree_AI_Smart_Farm\Web\Leafree\app\src\main\java\com\leafree\app\network\MqttClientManager.kt
+package com.leafree.app.network
+
+import android.content.Context
+import android.util.Log
+import org.eclipse.paho.android.service.MqttAndroidClient
+import org.eclipse.paho.android.service.MqttAndroidClient.Ack
+import org.eclipse.paho.client.mqttv3.IMqttActionListener
+import org.eclipse.paho.client.mqttv3.IMqttDeliveryToken
+import org.eclipse.paho.client.mqttv3.IMqttToken
+import org.eclipse.paho.client.mqttv3.MqttCallback
+import org.eclipse.paho.client.mqttv3.MqttClient
+import org.eclipse.paho.client.mqttv3.MqttConnectOptions
+import org.eclipse.paho.client.mqttv3.MqttMessage
+
+class MqttClientManager(
+    private val context: Context,
+    private val brokerUrl: String = "tcp://leafree.kr:1883",
+    private val clientId: String = MqttClient.generateClientId(),
+    private val username: String = "android_user",
+    private val user_password: String = "leafree",
+    private val topic: String = "/leafree/#"
+    ) {
+
+    private val mqttClient = MqttAndroidClient(context, brokerUrl, clientId, Ack.AUTO_ACK)
+
+    fun connectAndSubscribe(onMessage: (message: String, topic: String) -> Unit) {
+        val options = MqttConnectOptions().apply {
+            isCleanSession = true
+            setUserName(username)
+            password = user_password.toCharArray()
+            isAutomaticReconnect = true
+            connectionTimeout = 30
+            keepAliveInterval = 60
+        }
+
+        mqttClient.setCallback(object : MqttCallback {
+            override fun messageArrived(topic: String?, message: MqttMessage?) {
+                if (topic != null && message != null) {
+                    onMessage(message.toString(), topic)
+                }
+            }
+
+            override fun connectionLost(cause: Throwable?) {
+                Log.e("MQTT", "연결 끊김: ${cause?.message}")
+            }
+
+            override fun deliveryComplete(token: IMqttDeliveryToken?) {}
+        })
+
+        mqttClient.connect(options, null, object : IMqttActionListener {
+            override fun onSuccess(asyncActionToken: IMqttToken?) {
+                Log.d("MQTT", "연결 성공")
+                mqttClient.subscribe(topic, 1)
+            }
+
+            override fun onFailure(asyncActionToken: IMqttToken?, exception: Throwable?) {
+                Log.e("MQTT", "연결 실패: ${exception?.message}")
+            }
+        })
+    }
+
+
+    fun disconnect() {
+        mqttClient.disconnect()
+    }
+
+}
+```
+```C:\Users\Chanho Kim_PC\Desktop\project\Leafree_AI_Smart_Farm\Web\Leafree\app\src\main\java\com\leafree\app\network\MyFirebaseMessagingService.kt
+package com.leafree.app.network
+
+import android.app.NotificationChannel
+import android.app.NotificationManager
+import android.app.PendingIntent
+import android.content.Context
+import android.content.Intent
+import android.media.RingtoneManager
+import android.net.Uri
+import android.util.Log
+import androidx.core.app.NotificationCompat
+import com.google.firebase.messaging.FirebaseMessagingService
+import com.google.firebase.messaging.RemoteMessage
+import com.leafree.app.MainActivity
+import com.leafree.app.R
+import com.leafree.app.util.SharedPreferencesHelper
+
+class MyFirebaseMessagingService : FirebaseMessagingService() {
+
+    override fun onMessageReceived(remoteMessage: RemoteMessage) {
+        Log.d("FCM TEST", "알림 받기 성공")
+
+        remoteMessage.notification?.let {
+            val title = it.title
+            val body = it.body
+            val message = body.orEmpty()
+
+            saveNotification(message) // 💾 알림 저장
+            sendNotification(title, body) // 🔔 시스템 알림 표시
+            broadcastNotification(message) // 🔁 앱 포그라운드면 UI 갱신
+        }
+    }
+
+    private fun sendNotification(title: String?, body: String?) {
+        Log.d("FCM TEST", "화면에 표시하기 직전")
+
+        val intent = Intent(this, MainActivity::class.java).apply {
+            addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP)
+        }
+
+        val pendingIntent = PendingIntent.getActivity(
+            this, 0, intent,
+            PendingIntent.FLAG_ONE_SHOT or PendingIntent.FLAG_IMMUTABLE
+        )
+
+        val channelId = "Notification"
+        val defaultSoundUri: Uri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION)
+
+        val notificationBuilder = NotificationCompat.Builder(this, channelId)
+            .setSmallIcon(R.drawable.leafree_icon)
+            .setContentTitle(title)
+            .setContentText(body)
+            .setAutoCancel(true)
+            .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .setDefaults(NotificationCompat.DEFAULT_ALL)
+            .setSound(defaultSoundUri)
+            .setContentIntent(pendingIntent)
+
+        val notificationManager =
+            getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+
+        val channel = NotificationChannel(
+            channelId,
+            "Leafree 알림 채널",
+            NotificationManager.IMPORTANCE_HIGH
+        ).apply {
+            enableLights(true)
+            enableVibration(true)
+            setSound(
+                RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION),
+                null
+            )
+        }
+        notificationManager.createNotificationChannel(channel)
+        notificationManager.notify(0, notificationBuilder.build())
+        Log.d("FCM TEST", "화면에 표시하기까지 성공")
+
+    }
+
+    private fun saveNotification(message: String) {
+        val prefs = SharedPreferencesHelper(applicationContext)
+        val currentList = prefs.getNotificationList()
+        currentList.add(0, message) // 최신순
+        prefs.saveNotificationList(currentList)
+    }
+
+    private fun broadcastNotification(message: String) {
+        val intent = Intent("com.leafree.NEW_NOTIFICATION").apply {
+            putExtra("message", message)
+            setPackage(packageName)
+        }
+        sendBroadcast(intent)
+    }
+
+}
+```
+```C:\Users\Chanho Kim_PC\Desktop\project\Leafree_AI_Smart_Farm\Web\Leafree\app\src\main\java\com\leafree\app\repository\CropImageRepository.kt
+package com.leafree.app.repository
+
+import android.content.Context
+import android.net.Uri
+import androidx.core.net.toUri
+import java.io.File
+import java.util.UUID
+
+class CropImageRepository {
+
+    /**
+     * 서버로부터 받은 byte[] 이미지를 내부 저장소에 저장하고 URI로 반환
+     */
+    fun saveImageToInternalStorage(context: Context, imageBytes: ByteArray): Uri {
+        val uniqueFileName = "crop_${UUID.randomUUID()}.jpg"
+        val file = File(context.filesDir, uniqueFileName)
+        file.writeBytes(imageBytes)
+        return file.toUri()
+    }
+
+    /**
+     * 저장된 이미지 파일을 직접 삭제하거나 정리할 수 있도록 헬퍼 함수 제공 (옵션)
+     */
+    fun deleteImageFile(context: Context, fileName: String) {
+        val file = File(context.filesDir, fileName)
+        if (file.exists()) {
+            file.delete()
+        }
+    }
+
+    /**
+     * 저장된 파일의 전체 목록을 확인하거나 디버깅용으로 사용 가능
+     */
+    fun listSavedImages(context: Context): List<File> {
+        return context.filesDir.listFiles()?.toList() ?: emptyList()
+    }
+}
+```
+```C:\Users\Chanho Kim_PC\Desktop\project\Leafree_AI_Smart_Farm\Web\Leafree\app\src\main\java\com\leafree\app\repository\CropRepository.kt
+package com.leafree.app.repository
+
+import android.content.Context
+import android.util.Log
+import com.leafree.app.api.LeafreeApi
+import com.leafree.app.di.NetworkModule
+import com.leafree.app.model.CropInfo
+
+/**
+ * 작물 관련 데이터를 관리하는 Repository 클래스
+ * 백엔드 API를 통해 작물 정보를 조회하는 기능 제공
+ */
+class CropRepository(
+    private val context: Context,
+    private val cropImageRepo: CropImageRepository
+) {
+    private val api: LeafreeApi = NetworkModule.provideApi(context)
+
+    suspend fun getCropInfo(deviceId: Long): CropInfo {
+        Log.d("CropRepository", "요청 시작됨")
+        val crop = api.getCropInfo(deviceId)
+
+        val imageBytes = api.getCropImage(deviceId).bytes()
+        val imageUri = cropImageRepo.saveImageToInternalStorage(context, imageBytes)
+
+        Log.d("CropRepository", "요청 완료: $crop")
+        return crop.copy(cropImage = imageUri.toString())
+    }
+}
+```
+```C:\Users\Chanho Kim_PC\Desktop\project\Leafree_AI_Smart_Farm\Web\Leafree\app\src\main\java\com\leafree\app\repository\EventRepository.kt
+package com.leafree.app.repository
+
+import android.content.Context
+import com.leafree.app.di.NetworkModule
+import com.leafree.app.model.EventResponse
+
+class EventRepository(context: Context) {
+    private val api = NetworkModule.provideApi(context)
+
+    suspend fun getEvents(deviceId: Long, date: String): List<EventResponse> {
+        return api.getEvents(deviceId, date)
+    }
+}
+```
+```C:\Users\Chanho Kim_PC\Desktop\project\Leafree_AI_Smart_Farm\Web\Leafree\app\src\main\java\com\leafree\app\repository\SettingRepository.kt
+package com.leafree.app.repository
+
+import android.content.Context
+import com.leafree.app.api.LeafreeApi
+import com.leafree.app.di.NetworkModule
+import com.leafree.app.model.SettingInfo
+
+/**
+ * 설정 관련 데이터를 관리하는 Repository 클래스
+ * 백엔드 API를 통해 설정 정보를 조회하고 업데이트하는 기능 제공
+ */
+class SettingRepository(private val context: Context) {
+    private val api: LeafreeApi = NetworkModule.provideApi(context)
+
+    /**
+     * 특정 기기의 설정 정보를 조회
+     * @param deviceId 기기 ID
+     * @return 설정 정보
+     */
+    suspend fun getSettings(deviceId: Long): SettingInfo {
+        return api.getSettings(deviceId)
+    }
+
+    /**
+     * 특정 기기의 설정 정보를 업데이트
+     * @param deviceId 기기 ID
+     * @param setting 업데이트할 설정 정보
+     */
+    suspend fun updateSetting(deviceId: Long, setting: SettingInfo) {
+        api.updateSetting(deviceId, setting)
+    }
+}
+```
+```C:\Users\Chanho Kim_PC\Desktop\project\Leafree_AI_Smart_Farm\Web\Leafree\app\src\main\java\com\leafree\app\util\parseUtcToLocalDateTime.kt
+package com.leafree.app.util
+
+import java.time.LocalDateTime
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
+import java.util.Locale
+
+/**
+ * ISO 8601 UTC 형식 문자열을 LocalDateTime으로 변환
+ * 예: "2025-05-19T07:01:38.846Z" → LocalDateTime
+ */
+fun parseUtcToLocalDateTime(utcString: String): LocalDateTime {
+    val formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss")
+    val localDateTime = LocalDateTime.parse(utcString, formatter)
+    return localDateTime.atZone(ZoneId.of("UTC")).withZoneSameInstant(ZoneId.systemDefault()).toLocalDateTime()
+}
+
+/**
+ * LocalDateTime에서 시간만 "오전/오후 h:mm" 형식으로 포맷
+ */
+fun formatTimeKorean(localDateTime: LocalDateTime): String {
+    val formatter = DateTimeFormatter.ofPattern("a h:mm", Locale.KOREA)
+    return localDateTime.toLocalTime().format(formatter)
+}
+
+fun formatDateKorean(localDateTime: LocalDateTime): String {
+    val formatter = DateTimeFormatter.ofPattern("yyyy년 M월 d일", Locale.KOREA)
+    return localDateTime.toLocalDate().format(formatter)
+}
+```
+```C:\Users\Chanho Kim_PC\Desktop\project\Leafree_AI_Smart_Farm\Web\Leafree\app\src\main\java\com\leafree\app\util\SharedPreferencesHelper.kt
+package com.leafree.app.util
+
+import android.content.Context
+import android.content.SharedPreferences
+import com.google.gson.Gson
+import com.google.gson.reflect.TypeToken
+
+class SharedPreferencesHelper(context: Context) {
+    private val prefs: SharedPreferences =
+        context.getSharedPreferences("leafree_prefs", Context.MODE_PRIVATE)
+
+    private val gson = Gson()
+
+    // 🔐 [자동 로그인 토큰 저장/조회]
+    fun saveToken(token: String) {
+        prefs.edit().putString("access_token", token).apply()
+    }
+
+    fun getToken(): String? {
+        return prefs.getString("access_token", null)
+    }
+
+    fun clearToken() {
+        prefs.edit().remove("access_token").apply()
+    }
+
+    // 🔔 [알림 리스트 저장/조회]
+    fun saveNotificationList(notifications: List<String>) {
+        val json = gson.toJson(notifications)
+        prefs.edit().putString("notification_list", json).apply()
+    }
+
+    fun getNotificationList(): MutableList<String> {
+        val json = prefs.getString("notification_list", null)
+        return if (json != null) {
+            val type = object : TypeToken<MutableList<String>>() {}.type
+            gson.fromJson(json, type)
+        } else {
+            mutableListOf()
+        }
+    }
+
+    fun clearNotificationList() {
+        prefs.edit().remove("notification_list").apply()
+    }
+}
+```
+```C:\Users\Chanho Kim_PC\Desktop\project\Leafree_AI_Smart_Farm\Web\Leafree\app\src\main\java\com\leafree\app\util\TimeUtils.kt
+package com.leafree.app.util
+
+fun formatMinutesToDayHourMinute(totalMinutes: Int): String {
+    val days = totalMinutes / (24 * 60)
+    val hours = (totalMinutes % (24 * 60)) / 60
+    val minutes = totalMinutes % 60
+
+    return buildString {
+        if (days > 0) append("${days}일 ")
+        if (hours > 0) append("${hours}시간 ")
+        append("${minutes}분")
+    }.trim()
+}
+```
+```C:\Users\Chanho Kim_PC\Desktop\project\Leafree_AI_Smart_Farm\Web\Leafree\app\src\main\java\com\leafree\app\util\TokenManager.kt
+package com.leafree.app.util
+
+import android.content.Context
+import android.content.SharedPreferences
+
+class TokenManager(context: Context) {
+    private val prefs: SharedPreferences = context.getSharedPreferences("auth_prefs", Context.MODE_PRIVATE)
+
+    fun saveToken(token: String){
+        prefs.edit().putString("access_token",token).apply()
+    }
+
+    fun getToken(): String? = prefs.getString("access_token",null)
+
+}
+```
+```C:\Users\Chanho Kim_PC\Desktop\project\Leafree_AI_Smart_Farm\Web\Leafree\app\src\main\java\com\leafree\app\MainActivity.kt
+package com.leafree.app
+
+import android.content.BroadcastReceiver
+import android.content.Context
+import android.content.Intent
+import android.content.IntentFilter
+import android.os.Build
+import android.os.Bundle
+import androidx.activity.ComponentActivity
+import androidx.activity.compose.setContent
+import androidx.activity.enableEdgeToEdge
+import androidx.annotation.RequiresApi
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.remember
+import androidx.compose.ui.platform.LocalContext
+import androidx.navigation.compose.NavHost
+import androidx.navigation.compose.composable
+import androidx.navigation.compose.rememberNavController
+import com.google.firebase.messaging.FirebaseMessaging
+import com.leafree.app.api.LeafreeApi.FcmTokenRequest
+import com.leafree.app.di.NetworkModule
+import com.leafree.app.repository.CropImageRepository
+import com.leafree.app.repository.CropRepository
+import com.leafree.app.ui.screen.ArchiveScreen
+import com.leafree.app.ui.screen.HomeScreen
+import com.leafree.app.ui.screen.LoginScreen
+import com.leafree.app.ui.screen.SettingScreen
+import com.leafree.app.ui.theme.LeafreeTheme
+import com.leafree.app.util.SharedPreferencesHelper
+import com.leafree.app.viewModel.CropViewModel
+import com.leafree.app.viewModel.LoginViewModel
+import com.leafree.app.viewModel.SettingViewModel
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+
+
+class MainActivity : ComponentActivity() {
+    @RequiresApi(Build.VERSION_CODES.TIRAMISU)
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        enableEdgeToEdge()
+
+        setContent {
+            LeafreeTheme {
+                val navController = rememberNavController()
+                val context = LocalContext.current
+                val prefs = remember { SharedPreferencesHelper(context) }
+
+                val cropImageRepository = remember { CropImageRepository() }
+                val cropRepository = remember { CropRepository(context, cropImageRepository) }
+                val cropViewModel = remember { CropViewModel(cropRepository) }
+                val settingViewModel = remember { SettingViewModel(context) }
+                val loginViewModel = remember { LoginViewModel(context) }
+
+                val notifications = remember {
+                    mutableStateListOf<String>().apply {
+                        val rawSet = prefs.getNotificationList()
+                        addAll(rawSet)
+                    }
+                }
+
+                fun addNotification(message: String) {
+                    notifications.add(0, message)
+                    prefs.saveNotificationList(notifications)
+                }
+
+                DisposableEffect(Unit) {
+                    val receiver = object : BroadcastReceiver() {
+                        override fun onReceive(context: Context?, intent: Intent?) {
+                            val message = intent?.getStringExtra("message") ?: return
+
+                            notifications.add(0, message)
+                            prefs.saveNotificationList(notifications)
+
+                            if (message.contains("심었어요") || message.contains("Crop registered")) {
+                                cropViewModel.loadCropInfo()
+                            }
+                        }
+                    }
+
+                    val filter = IntentFilter("com.leafree.NEW_NOTIFICATION")
+
+                    context.registerReceiver(receiver, filter, Context.RECEIVER_NOT_EXPORTED)
+
+                    onDispose {
+                        context.unregisterReceiver(receiver)
+                    }
+                }
+
+
+                LaunchedEffect(Unit) {
+                    FirebaseMessaging.getInstance().token.addOnSuccessListener { token ->
+
+                        val deviceId = 1L;
+                        val api = NetworkModule.provideApi(context)
+
+                        CoroutineScope(Dispatchers.IO).launch {
+                            try {
+                                val response = api.sendFcmToken(
+                                    deviceId = deviceId,
+                                    token = FcmTokenRequest(fcmToken = token)
+                                )
+                            } catch (e: Exception) {
+                            }
+                        }
+
+                    }.addOnFailureListener {
+                    }
+                }
+
+                val startDestination = if (prefs.getToken() != null) "home" else "login"
+
+                NavHost(navController = navController, startDestination = startDestination) {
+                    composable("login") {
+                        LoginScreen(
+                            onLoginSuccess = { token ->
+                                prefs.saveToken(token)
+                                navController.navigate("home") {
+                                    popUpTo("login") { inclusive = true }
+                                }
+                            },
+                            viewModel = loginViewModel
+                        )
+                    }
+
+                    composable("home") {
+                        HomeScreen(
+                            navController,
+                            notifications,
+                            viewModel = cropViewModel,
+                            prefs = prefs
+                        )
+                    }
+                    composable("setting") {
+                        SettingScreen(
+                            navController,
+                            notifications,
+                            viewModel = settingViewModel,
+                            prefs = prefs
+                        )
+                    }
+                    composable("archive") {
+                        ArchiveScreen(
+                            navController,
+                            notifications,
+                            prefs = prefs
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+```
+```C:\Users\Chanho Kim_PC\Desktop\project\Leafree_AI_Smart_Farm\Web\Leafree\app\src\main\AndroidManifest.xml
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <!-- ✅ 인터넷 권한 추가 -->
+    <uses-permission android:name="android.permission.INTERNET" />
+
+    <application
+        android:name=".LeafreeApp"
+        android:allowBackup="true"
+        android:dataExtractionRules="@xml/data_extraction_rules"
+        android:fullBackupContent="@xml/backup_rules"
+        android:icon="@mipmap/ic_launcher"
+        android:label="@string/app_name"
+        android:roundIcon="@mipmap/ic_launcher_round"
+        android:supportsRtl="true"
+        android:theme="@style/Theme.Leafree"
+        tools:targetApi="31">
+
+        <!-- [START fcm_default_icon] -->
+        <!-- Set custom default icon. This is used when no icon is set for incoming notification messages.
+             See README(https://goo.gl/l4GJaQ) for more. -->
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_icon"
+            android:resource="@drawable/leafree_icon" />
+        <!-- Set color used with incoming notification messages. This is used when no color is set for the incoming
+             notification message. See README(https://goo.gl/6BKBk7) for more. -->
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_color"
+            android:resource="@color/main_color" />
+        <!-- [END fcm_default_icon] -->
+
+        <!-- [START fcm_default_channel] -->
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_channel_id"
+            android:value="@string/app_name" />
+        <!-- [END fcm_default_channel] -->
+
+        <activity
+            android:name=".MainActivity"
+            android:exported="true"
+            android:label="@string/app_name"
+            android:theme="@style/Theme.Leafree">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+
+        <!-- ✅ FCM 서비스 등록 -->
+        <service
+            android:name=".network.MyFirebaseMessagingService"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="com.google.firebase.MESSAGING_EVENT" />
+            </intent-filter>
+        </service>
+
+        <!-- ✅ MQTT 서비스 -->
+        <service
+            android:name="org.eclipse.paho.android.service.MqttService"
+            android:enabled="true"
+            android:exported="true" />
+    </application>
+
+</manifest>
+```
