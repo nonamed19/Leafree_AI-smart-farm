@@ -13,6 +13,7 @@ import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 
 import java.util.Map;
+import java.util.HashMap;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executors;
@@ -52,6 +53,10 @@ public class SensorBufferService {
     }
 
     public void bufferSensorData(Long deviceId, String content, float value) {
+        if (!Float.isFinite(value) || !isSupportedSensorType(content)) {
+            log.warn("Rejected invalid sensor payload: deviceId={}, type={}, value={}", deviceId, content, value);
+            return;
+        }
         sensorBuffer.compute(deviceId, (key, existingSensor) -> {
             Sensor.SensorBuilder builder = existingSensor != null ? 
                 Sensor.builder()
@@ -73,21 +78,30 @@ public class SensorBufferService {
                 case "co2_ppm" -> builder.co2Level((int) value);
                 case "water_level" -> builder.waterLevel((int) value);
                 case "soil_moisture" -> builder.soilMoisture((int) value);
-                default -> log.warn("Unknown sensor type: {}", content);
+                default -> { }
             }
             return builder.build();
         });
     }
 
+    private boolean isSupportedSensorType(String content) {
+        return "temperature".equals(content) || "humidity".equals(content)
+                || "light".equals(content) || "co2_ppm".equals(content)
+                || "water_level".equals(content) || "soil_moisture".equals(content);
+    }
 
     private void flushBuffer() {
         if (sensorBuffer.isEmpty()) return;
 
-        sensorBuffer.forEach((deviceId, sensor) -> {
+        // Remove only the exact snapshot after it has been persisted. A newer
+        // MQTT sample for the same device must remain buffered for the next run.
+        Map<Long, Sensor> snapshot = new HashMap<>(sensorBuffer);
+        snapshot.forEach((deviceId, sensor) -> {
             try {
                 Optional<Setting> optionalSetting = settingRepository.findById(deviceId);
                 if (optionalSetting.isEmpty()) {
                     log.warn("Setting not found for deviceId: {}", deviceId);
+                    sensorBuffer.remove(deviceId, sensor);
                     return;
                 }
 
@@ -113,13 +127,13 @@ public class SensorBufferService {
 
                 // DB 저장
                 Sensor savedSensor = sensorService.saveSensorData(sensor);
+                sensorBuffer.remove(deviceId, sensor);
 
             } catch (Exception e) {
                 log.error("Failed to process sensor data for device {}: {}", deviceId, e.getMessage());
             }
         });
 
-        sensorBuffer.clear();
     }
 
     private void handleWarning(Long deviceId, String type, float value,
@@ -150,4 +164,4 @@ public class SensorBufferService {
     }
 
 
-} 
+}

@@ -16,6 +16,8 @@ public interface DeviceService {
 
     List<UserDeviceResponse> getAllUserDevice(Long userId);
 
+    boolean hasDeviceAccess(Long userId, Long deviceId);
+
     void deleteUserDevice(Long userId, Long deviceId);
 
     DeviceDetailResponseDto getDeviceDetail(Long deviceId);

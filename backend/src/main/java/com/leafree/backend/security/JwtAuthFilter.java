@@ -12,6 +12,7 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
+import io.jsonwebtoken.JwtException;
 
 import java.io.IOException;
 
@@ -32,7 +33,11 @@ public class JwtAuthFilter extends OncePerRequestFilter {
 
         if(token != null && token.startsWith("Bearer ")) {
             String jwtToken = token.substring(7);
-            userId = jwtProvider.getUserIdFromToken(jwtToken);
+            try {
+                userId = jwtProvider.getUserIdFromToken(jwtToken);
+            } catch (JwtException | IllegalArgumentException exception) {
+                log.debug("Rejected invalid JWT for {}", request.getRequestURI());
+            }
         }
 
         if(userId != null && !userId.isEmpty() && SecurityContextHolder.getContext().getAuthentication() == null) {

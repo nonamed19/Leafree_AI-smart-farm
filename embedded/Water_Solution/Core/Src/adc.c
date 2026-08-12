@@ -151,7 +151,7 @@ void HAL_ADC_MspDeInit(ADC_HandleTypeDef* adcHandle)
 /* USER CODE BEGIN 1 */
 void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef *hadc)
 {
-    if (hadc->Instance == ADC1)
+    if (hadc->Instance == ADC1 && xAdcQ != NULL)
     {
     	uint16_t buf[2] = { adc_dma_buf[0], adc_dma_buf[1] };
 			BaseType_t hp = pdFALSE;

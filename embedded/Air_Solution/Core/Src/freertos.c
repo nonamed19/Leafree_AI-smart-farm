@@ -14,6 +14,7 @@
 #include "tim.h"
 #include <stdio.h>
 #include <string.h>
+#include <stdbool.h>
 #include "BH1750.h"
 #include "i2c.h"
 #include "WS2812B.h"
@@ -86,8 +87,6 @@ uint8_t rxBuf[9];  // 가장 큰 구조체보다 살짝 여유 있게
 QueueHandle_t xAirCtlQ;
 QueueHandle_t xRtcSetQ;
 
-RTC_TimeTypeDef sTime;
-RTC_DateTypeDef sDate;
 /* USER CODE END Variables */
 /* Definitions for defaultTask */
 osThreadId_t defaultTaskHandle;
@@ -118,6 +117,10 @@ void MX_FREERTOS_Init(void); /* (MISRA C 2004 rule 8.1) */
   */
 void MX_FREERTOS_Init(void) {
   /* USER CODE BEGIN Init */
+	xAirCtlQ = xQueueCreate(4, sizeof(AirCtl_t));
+	xRtcSetQ = xQueueCreate(1, sizeof(RtcSetPacket_t));
+	configASSERT(xAirCtlQ != NULL && xRtcSetQ != NULL);
+	HAL_UART_Receive_DMA(&huart3, rxBuf, sizeof(rxBuf));
   /* USER CODE END Init */
 
   /* USER CODE BEGIN RTOS_MUTEX */
@@ -161,9 +164,6 @@ void MX_FREERTOS_Init(void) {
 	  };
 	  lightTaskHandle = osThreadNew(StartLightControlTask, NULL, &lightTask_attributes);
 
-	  HAL_UART_Receive_DMA(&huart3, rxBuf, sizeof(AirCtl_t));
-	  xAirCtlQ = xQueueCreate(4, sizeof(AirCtl_t));
-	  xRtcSetQ = xQueueCreate(1, sizeof(RtcSetPacket_t));
 
 	  osThreadId_t ctlTaskHandle;
 	  osThreadAttr_t ctlTask_attributes = {
@@ -238,7 +238,7 @@ void StartSensorTask(void *argument)
         if (mhz_resp[0] == 0xFF && mhz_resp[1] == 0x86) {
             g_co2 = (mhz_resp[2] << 8) | mhz_resp[3];
         } else {
-            g_co2 = -1;  // 읽기 실패 시
+            g_co2 = 0;  // invalid readings are not sent as a misleading unsigned value
         }
 
 //        size = snprintf(buffer, sizeof(buffer),
@@ -296,22 +296,20 @@ void StartFanControlTask(void *argument)
 void StartLightControlTask(void *argument)
 {
     WS2812B_Init();
-    int start_hour = 8;
-    int end_hour = start_hour + std_light_hours;
+    const uint8_t startHour = 8;
 
     for (;;)
     {
         uint8_t hour = sTime.Hours;
-        bool in_light_period = false;
+        uint8_t lightHours = std_light_hours > 24 ? 24 : std_light_hours;
+        bool in_light_period;
 
         // 조광 시간이 1 이상인 경우만 판단
-        if (std_light_hours > 0)
-        {
-            if (hour >= start_hour && hour < end_hour)
-            {
-                in_light_period = true;
-            }
-        }
+        uint8_t endHour = (startHour + lightHours) % 24;
+        in_light_period = lightHours == 24 ||
+                (lightHours > 0 && (endHour > startHour
+                        ? hour >= startHour && hour < endHour
+                        : hour >= startHour || hour < endHour));
 
         if (in_light_period && g_lux < std_lux)
         {
@@ -341,13 +339,17 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
         {
             AirCtl_t pkt;
             memcpy(&pkt, rxBuf, sizeof(AirCtl_t));
-            xQueueSendFromISR(xAirCtlQ, &pkt, &hp);
+            if (xAirCtlQ != NULL) {
+                xQueueSendFromISR(xAirCtlQ, &pkt, &hp);
+            }
         }
         else if (cmd == 0x02)  // RTC 설정
         {
             RtcSetPacket_t rtc;
             memcpy(&rtc, rxBuf, sizeof(RtcSetPacket_t));
-            xQueueSendFromISR(xRtcSetQ, &rtc, &hp);
+            if (xRtcSetQ != NULL) {
+                xQueueSendFromISR(xRtcSetQ, &rtc, &hp);
+            }
         }
 
         portYIELD_FROM_ISR(hp);
@@ -479,26 +481,6 @@ void StartUartCtlTask(void *argument)
 void StartRtcMonitorTask(void *argument)
 {
     char timeBuf[64];
-    static bool firstRun = true;
-
-    if (firstRun)
-    {
-        // RTC 초기 시간 설정 (한 번만)
-        sTime.Hours = 0;
-        sTime.Minutes = 0;
-        sTime.Seconds = 0;
-
-        sDate.WeekDay = RTC_WEEKDAY_MONDAY;
-        sDate.Date = 15;
-        sDate.Month = 5;
-        sDate.Year = 25;  // 2025
-
-        HAL_RTC_SetTime(&hrtc, &sTime, RTC_FORMAT_BIN);
-        HAL_RTC_SetDate(&hrtc, &sDate, RTC_FORMAT_BIN);
-
-        firstRun = false;
-    }
-
     for (;;)
     {
         HAL_RTC_GetTime(&hrtc, &sTime, RTC_FORMAT_BIN);

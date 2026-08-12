@@ -11,6 +11,8 @@ import org.eclipse.paho.client.mqttv3.MqttClient;
 import org.eclipse.paho.client.mqttv3.MqttMessage;
 import org.springframework.stereotype.Component;
 
+import java.nio.charset.StandardCharsets;
+
 @Slf4j
 @Component
 @RequiredArgsConstructor
@@ -32,8 +34,8 @@ public class MqttReceiver implements MqttCallback {
 
     @Override
     public void messageArrived(String topic, MqttMessage mqttMessage) throws Exception {
-        String payload = new String(mqttMessage.getPayload());
-        log.info("Message arrived : topic : {}, message : {}", topic, payload);
+        String payload = new String(mqttMessage.getPayload(), StandardCharsets.UTF_8).trim();
+        log.debug("Message arrived : topic : {}", topic);
 
         String[] topicParts = topic.split("/");
         if (topicParts.length != 5) {
@@ -41,7 +43,13 @@ public class MqttReceiver implements MqttCallback {
             return;
         }
 
-        Long deviceId = Long.parseLong(topicParts[2]);
+        Long deviceId;
+        try {
+            deviceId = Long.parseLong(topicParts[2]);
+        } catch (NumberFormatException exception) {
+            log.warn("Invalid device id in MQTT topic: {}", topic);
+            return;
+        }
         String type = topicParts[3];
         String content = topicParts[4];
 

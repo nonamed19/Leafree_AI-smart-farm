@@ -7,6 +7,7 @@ import com.leafree.app.model.SensorInfo
 import com.leafree.app.network.MqttClientManager
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
 class SensorViewModel(
@@ -26,7 +27,7 @@ class SensorViewModel(
             SensorInfo("펌프 수위", "-", "%")
         )
     )
-    val sensorList: StateFlow<List<SensorInfo>> get() = _sensorList
+    val sensorList: StateFlow<List<SensorInfo>> = _sensorList.asStateFlow()
 
     private val mqttClient = MqttClientManager(
         context = context,
@@ -40,18 +41,20 @@ class SensorViewModel(
     private fun connectMqtt() {
         mqttClient.connectAndSubscribe { message, topic ->
             viewModelScope.launch {
+                val value = message.trim().toFloatOrNull() ?: return@launch
+                if (!value.isFinite()) return@launch
                 val updated = _sensorList.value.toMutableList()
 
                 when {
-                    topic.endsWith("temperature") -> updated[0] = updated[0].copy(value = "$message")
-                    topic.endsWith("humidity") -> updated[1] = updated[1].copy(value = "$message")
-                    topic.endsWith("light") -> updated[2] = updated[2].copy(value = "$message")
-                    topic.endsWith("co2_ppm") -> updated[3] = updated[3].copy(value = "$message")
-                    topic.endsWith("soil_moisture") -> updated[4] = updated[4].copy(value = "$message")
-                    topic.endsWith("water_level") -> updated[5] = updated[5].copy(value = "$message")
+                    topic.endsWith("temperature") -> updated[0] = updated[0].copy(value = value.toString())
+                    topic.endsWith("humidity") -> updated[1] = updated[1].copy(value = value.toString())
+                    topic.endsWith("light") -> updated[2] = updated[2].copy(value = value.toString())
+                    topic.endsWith("co2_ppm") -> updated[3] = updated[3].copy(value = value.toString())
+                    topic.endsWith("soil_moisture") -> updated[4] = updated[4].copy(value = value.toString())
+                    topic.endsWith("water_level") -> updated[5] = updated[5].copy(value = value.toString())
                 }
 
-                _sensorList.value = updated
+                if (updated != _sensorList.value) _sensorList.value = updated
             }
         }
     }

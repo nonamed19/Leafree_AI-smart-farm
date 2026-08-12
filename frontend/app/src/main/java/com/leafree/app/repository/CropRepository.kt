@@ -5,6 +5,8 @@ import android.util.Log
 import com.leafree.app.api.LeafreeApi
 import com.leafree.app.di.NetworkModule
 import com.leafree.app.model.CropInfo
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
 
 /**
  * 작물 관련 데이터를 관리하는 Repository 클래스
@@ -18,9 +20,11 @@ class CropRepository(
 
     suspend fun getCropInfo(deviceId: Long): CropInfo {
         Log.d("CropRepository", "요청 시작됨")
-        val crop = api.getCropInfo(deviceId)
-
-        val imageBytes = api.getCropImage(deviceId).bytes()
+        val (crop, imageBytes) = coroutineScope {
+            val cropRequest = async { api.getCropInfo(deviceId) }
+            val imageRequest = async { api.getCropImage(deviceId).bytes() }
+            cropRequest.await() to imageRequest.await()
+        }
         val imageUri = cropImageRepo.saveImageToInternalStorage(context, imageBytes)
 
         Log.d("CropRepository", "요청 완료: $crop")

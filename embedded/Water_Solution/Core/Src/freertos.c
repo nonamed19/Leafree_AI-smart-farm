@@ -35,6 +35,7 @@
 #include <stdarg.h>  // 반드시 포함하세요
 #include <stdio.h>   // vsnprintf
 #include <string.h>  // strlen
+#include <stdbool.h>
 
 /* USER CODE END Includes */
 
@@ -62,6 +63,7 @@ QueueHandle_t xDebugQ    = NULL;   /* char[64]      – log msg */
 
 SemaphoreHandle_t xSensorMux;      /* binary mutex  – g_sensor 보호 */
 TaskHandle_t xWateringTaskHandle = NULL;
+volatile bool g_manual_water_request = false;
 uint32_t gPeriodHours = 8;
 
 SensorData_t        g_sensor;
@@ -114,9 +116,15 @@ void vApplicationGetIdleTaskMemory( StaticTask_t **ppxIdleTaskTCBBuffer, StackTy
   */
 void MX_FREERTOS_Init(void) {
   /* USER CODE BEGIN Init */
+	xSensorMux = xSemaphoreCreateMutex();
+	xAdcQ   = xQueueCreate(8, sizeof(uint16_t[ADC_BUF_LEN]));
+	xCtlQ   = xQueueCreate(6, sizeof(uint32_t));
+	xDebugQ = xQueueCreate(8, sizeof(char[DEBUG_BUF_SIZE]));
+	configASSERT(xSensorMux != NULL && xAdcQ != NULL && xCtlQ != NULL && xDebugQ != NULL);
+
 	HAL_ADCEx_Calibration_Start(&hadc1);
 	HAL_ADC_Start_DMA(&hadc1, (uint32_t *)adc_dma_buf, ADC_BUF_LEN);
-	HAL_UART_Receive_DMA(&huart1, (uint8_t*)&rxBuf, 4);
+	HAL_UART_Receive_DMA(&huart1, rxBuf, RX_BUF_SZ);
 
   /* USER CODE END Init */
 
@@ -127,7 +135,6 @@ void MX_FREERTOS_Init(void) {
 
   /* USER CODE BEGIN RTOS_SEMAPHORES */
   /* add semaphores, ... */
-	xSensorMux = xSemaphoreCreateMutex();
 
   /* USER CODE END RTOS_SEMAPHORES */
 
@@ -138,9 +145,6 @@ void MX_FREERTOS_Init(void) {
   /* USER CODE BEGIN RTOS_QUEUES */
   /* add queues, ... */
 
-  xAdcQ   = xQueueCreate(8,  sizeof(uint16_t[ADC_BUF_LEN]));
-	xCtlQ   = xQueueCreate(6,  sizeof(uint32_t));
-	xDebugQ = xQueueCreate(8, sizeof(char [128]));
   /* USER CODE END RTOS_QUEUES */
 
   /* Create the thread(s) */
@@ -231,7 +235,10 @@ void vWaterCTLTask(void *arg)
 				break;
 
 			case 0x03: /* Manual Pump */
-				if (ctl.trig != 0U) { xTaskNotifyGive(xWateringTaskHandle); }
+				if (ctl.trig != 0U) {
+					g_manual_water_request = true;
+					xTaskNotifyGive(xWateringTaskHandle);
+				}
 				break;
 
 			case 0x04:
@@ -269,7 +276,7 @@ void vSensingTask(void * arg)
 			// 토양의 수분 정도가 적다면 워터링 테스크 신호
 			if(g_sensor.soil_adc > g_cfg.target_adc)
 			{
-				xTaskNotify(xWateringTaskHandle, 0, eSetValueWithoutOverwrite);
+				xTaskNotifyGive(xWateringTaskHandle);
 			}
 			// 수위센서의 값이 특정 값보다 작다면 라즈베리파이에 UART로 알림 전송
 		}
@@ -286,6 +293,21 @@ void vWateringTask(void *arg)
 	//for(g.cfg = )
 	for (;;)
 	{
+		/* Do not energize the pump until a manual, sensor, or timer trigger arrives. */
+		(void)ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
+		bool manualRequest = g_manual_water_request;
+		g_manual_water_request = false;
+
+		SensorData_t before;
+		xSemaphoreTake(xSensorMux, portMAX_DELAY);
+		before = g_sensor;
+		xSemaphoreGive(xSensorMux);
+		if (before.level_adc < g_cfg.min_level_adc ||
+			(!manualRequest && before.soil_adc <= g_cfg.target_adc)) {
+			Debug_Print("WATER skipped: soil=%u level=%u\\r\\n", before.soil_adc, before.level_adc);
+			continue;
+		}
+
 		HAL_GPIO_WritePin(GPIOA, motor1_Pin, GPIO_PIN_RESET); /* Pump ON */
 		TickType_t start = xTaskGetTickCount();
 		for (;;)
@@ -298,7 +320,9 @@ void vWateringTask(void *arg)
 //				(s.level_adc <  g_cfg.min_level_adc) ||
 //				((xTaskGetTickCount() - start) >= pdMS_TO_TICKS(g_cfg.max_pump_ms)))
 //			{
-			if ((s.soil_adc  < g_cfg.target_adc))
+			if (s.soil_adc <= g_cfg.target_adc ||
+				(s.level_adc < g_cfg.min_level_adc) ||
+				((xTaskGetTickCount() - start) >= pdMS_TO_TICKS(g_cfg.max_pump_ms)))
 			{
 				break;
 			}
@@ -312,7 +336,6 @@ void vWateringTask(void *arg)
 #else
     set_next_alarm_hours(g_cfg.interval_h);
 #endif
-    (void)ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
 	}
 }
 

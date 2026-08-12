@@ -6,6 +6,9 @@
  */
 
 #ifndef INC_SETTINGCONFIG_H_
+#define INC_SETTINGCONFIG_H_
+
+#include "FreeRTOS.h"
 
 /* === CTL 비트필드 === */
 typedef union {
@@ -35,10 +38,6 @@ typedef struct {
     uint16_t level_adc;       // 물탱크 수위
     TickType_t sample_tick;
 } SensorData_t;
-
-
-#define INC_SETTINGCONFIG_H_
-
 
 
 #endif /* INC_SETTINGCOFIG_H_ */

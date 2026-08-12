@@ -48,7 +48,7 @@ interface LeafreeApi {
     @GET("device/{deviceId}/event")
     suspend fun getEvents(@Path("deviceId") deviceId: Long, @Query("date") date: String): List<EventResponse>
 
-    @POST("/api/device/{deviceId}/fcm-token")
+    @POST("device/{deviceId}/fcm-token")
     suspend fun sendFcmToken(
         @Path("deviceId") deviceId: Long,
         @Body token: FcmTokenRequest
@@ -58,4 +58,4 @@ interface LeafreeApi {
         val fcmToken: String
     )
 
-} 
+}

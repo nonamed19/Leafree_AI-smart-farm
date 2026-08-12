@@ -15,6 +15,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
+import org.springframework.security.crypto.password.PasswordEncoder;
 
 @Slf4j
 @Service
@@ -24,6 +25,7 @@ public class UserServiceImpl implements UserService{
     private final UserRepository userRepository;
     private final JwtProvider jwtProvider;
     private final FcmTokenRepository fcmTokenRepository;
+    private final PasswordEncoder passwordEncoder;
 
     @Override
     public SignUpResponse createUser(SignUpRequest signUpRequest) {
@@ -34,7 +36,7 @@ public class UserServiceImpl implements UserService{
 
         User newUser = User.builder()
                 .email(signUpRequest.getEmail())
-                .password(signUpRequest.getPassword())
+                .password(passwordEncoder.encode(signUpRequest.getPassword()))
                 .nickname(signUpRequest.getNickname())
                 .build();
 

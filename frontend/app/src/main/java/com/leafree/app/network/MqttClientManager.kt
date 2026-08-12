@@ -17,17 +17,20 @@ class MqttClientManager(
     private val brokerUrl: String = "tcp://leafree.kr:1883",
     private val clientId: String = MqttClient.generateClientId(),
     private val username: String = "android_user",
-    private val user_password: String = "leafree",
+    private val password: String = "leafree",
     private val topic: String = "/leafree/#"
     ) {
 
     private val mqttClient = MqttAndroidClient(context, brokerUrl, clientId, Ack.AUTO_ACK)
+    @Volatile private var isConnecting = false
 
     fun connectAndSubscribe(onMessage: (message: String, topic: String) -> Unit) {
+        if (mqttClient.isConnected || isConnecting) return
+        isConnecting = true
         val options = MqttConnectOptions().apply {
             isCleanSession = true
             setUserName(username)
-            password = user_password.toCharArray()
+            password = this@MqttClientManager.password.toCharArray()
             isAutomaticReconnect = true
             connectionTimeout = 30
             keepAliveInterval = 60
@@ -36,11 +39,12 @@ class MqttClientManager(
         mqttClient.setCallback(object : MqttCallback {
             override fun messageArrived(topic: String?, message: MqttMessage?) {
                 if (topic != null && message != null) {
-                    onMessage(message.toString(), topic)
+                    onMessage(String(message.payload, Charsets.UTF_8), topic)
                 }
             }
 
             override fun connectionLost(cause: Throwable?) {
+                isConnecting = false
                 Log.e("MQTT", "연결 끊김: ${cause?.message}")
             }
 
@@ -49,11 +53,18 @@ class MqttClientManager(
 
         mqttClient.connect(options, null, object : IMqttActionListener {
             override fun onSuccess(asyncActionToken: IMqttToken?) {
+                isConnecting = false
                 Log.d("MQTT", "연결 성공")
-                mqttClient.subscribe(topic, 1)
+                mqttClient.subscribe(topic, 1, null, object : IMqttActionListener {
+                    override fun onSuccess(asyncActionToken: IMqttToken?) = Unit
+                    override fun onFailure(asyncActionToken: IMqttToken?, exception: Throwable?) {
+                        Log.e("MQTT", "구독 실패: ${exception?.message}")
+                    }
+                })
             }
 
             override fun onFailure(asyncActionToken: IMqttToken?, exception: Throwable?) {
+                isConnecting = false
                 Log.e("MQTT", "연결 실패: ${exception?.message}")
             }
         })
@@ -61,7 +72,9 @@ class MqttClientManager(
 
 
     fun disconnect() {
-        mqttClient.disconnect()
+        if (mqttClient.isConnected) {
+            mqttClient.disconnect()
+        }
     }
 
 }

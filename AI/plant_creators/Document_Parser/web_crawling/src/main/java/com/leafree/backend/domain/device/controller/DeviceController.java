@@ -16,6 +16,8 @@ import com.leafree.backend.domain.setting.service.SettingService;
 import com.leafree.backend.domain.user.dto.FcmTokenDto;
 import com.leafree.backend.domain.user.service.UserService;
 import com.leafree.backend.util.SecurityUtil;
+import com.leafree.backend.exception.ExceptionCode;
+import com.leafree.backend.exception.type.BusinessException;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -45,6 +47,13 @@ public class DeviceController {
     private final SettingService settingService;
     private final EventService eventService;
 
+    private void requireDeviceAccess(Authentication authentication, Long deviceId) {
+        Long userId = SecurityUtil.getCurrentUserId(authentication);
+        if (!deviceService.hasDeviceAccess(userId, deviceId)) {
+            throw new BusinessException(ExceptionCode.DEVICE_ACCESS_DENIED);
+        }
+    }
+
     @Operation(summary = "사용자 기기목록 조회", description = "userId에 해당하는 기기목록 조회")
     @GetMapping
     public ResponseEntity<List<UserDeviceResponse>> getUserDeviceList(Authentication authentication) {
@@ -55,14 +64,16 @@ public class DeviceController {
 
     @Operation(summary = "기기 상세정보 조회", description = "기기에 현재 심긴 작물 정보")
     @GetMapping("/{deviceId}")
-    public ResponseEntity<DeviceDetailResponseDto> getDeviceDetail(@PathVariable Long deviceId) {
+    public ResponseEntity<DeviceDetailResponseDto> getDeviceDetail(Authentication authentication, @PathVariable Long deviceId) {
+        requireDeviceAccess(authentication, deviceId);
         DeviceDetailResponseDto response = deviceService.getDeviceDetail(deviceId);
         return ResponseEntity.ok(response);
     }
 
     @Operation(summary = "기기에 심긴 작물 이미지 조회", description = "기기에 현재 심긴 작물 이미지")
     @GetMapping("/{deviceId}/image")
-    public ResponseEntity<byte[]> getDeviceImage(@PathVariable Long deviceId) {
+    public ResponseEntity<byte[]> getDeviceImage(Authentication authentication, @PathVariable Long deviceId) {
+        requireDeviceAccess(authentication, deviceId);
         byte[] image = cropService.getLatestCropImage(deviceId);
 
         if (image == null || image.length == 0) {
@@ -92,7 +103,8 @@ public class DeviceController {
 
     @DeleteMapping("{deviceId}/crop/{cropId}")
     @Operation(summary = "식물 삭제", description = "기기에서 식물을 제거합니다.")
-    public ResponseEntity<Map<String, String>> deleteCrop(@PathVariable Long deviceId, @PathVariable Long cropId) {
+    public ResponseEntity<Map<String, String>> deleteCrop(Authentication authentication, @PathVariable Long deviceId, @PathVariable Long cropId) {
+        requireDeviceAccess(authentication, deviceId);
 
         cropService.deleteCrop(deviceId, cropId);
 
@@ -101,7 +113,8 @@ public class DeviceController {
 
     @GetMapping("/{deviceId}/setting")
     @Operation(summary = "기기 설정 정보 조회", description = "기기 설정 정보를 조회합니다.")
-    public ResponseEntity<SettingResponse> getDeviceSetting(@PathVariable Long deviceId) {
+    public ResponseEntity<SettingResponse> getDeviceSetting(Authentication authentication, @PathVariable Long deviceId) {
+        requireDeviceAccess(authentication, deviceId);
 
         SettingResponse response = settingService.getSetting(deviceId);
         return ResponseEntity.status(HttpStatus.OK).body(response);
@@ -109,7 +122,8 @@ public class DeviceController {
 
     @PatchMapping("/{deviceId}/setting")
     @Operation(summary = "기기 설정 수정", description = "기기 설정을 수동으로 수정합니다.")
-    public ResponseEntity<UpdateSettingResponse> updateDeviceSetting(@PathVariable Long deviceId, @RequestBody UpdateSettingRequest request) {
+    public ResponseEntity<UpdateSettingResponse> updateDeviceSetting(Authentication authentication, @PathVariable Long deviceId, @RequestBody UpdateSettingRequest request) {
+        requireDeviceAccess(authentication, deviceId);
 
         UpdateSettingResponse response = settingService.updateSetting(deviceId,request);
 
@@ -118,7 +132,8 @@ public class DeviceController {
 
     @Operation(summary = "날짜별 이벤트 조회", description = "특정 날짜(2025-05-13)의 이벤트들을 리스트로 조회")
     @GetMapping("/{deviceId}/event")
-    public ResponseEntity<List<EventResponse>> getEventsForDate(@PathVariable Long deviceId, @RequestParam(name = "date") LocalDate date) {
+    public ResponseEntity<List<EventResponse>> getEventsForDate(Authentication authentication, @PathVariable Long deviceId, @RequestParam(name = "date") LocalDate date) {
+        requireDeviceAccess(authentication, deviceId);
 
         List<EventResponse> response = eventService.getEvent(deviceId, date);
 
@@ -129,8 +144,9 @@ public class DeviceController {
     @PostMapping("/{deviceId}/fcm-token")
     public ResponseEntity<Map<String, String>> insertFcmToken(@PathVariable Long deviceId, @RequestBody FcmTokenDto tokenDto, Authentication authentication) {
         Long userId = SecurityUtil.getCurrentUserId(authentication);
+        requireDeviceAccess(authentication, deviceId);
 
-        userService.saveFcmToken(tokenDto, userId, deviceId);
+        userService.saveFcmToken(tokenDto, deviceId, userId);
 
         return ResponseEntity.status(HttpStatus.OK).body(Collections.singletonMap("message","fcm 토큰 저장에 완료했습니다."));
     }
@@ -139,6 +155,7 @@ public class DeviceController {
     @DeleteMapping("/{deviceId}")
     public ResponseEntity<Map<String,String>> deleteUserDevice(Authentication authentication, @PathVariable Long deviceId) {
         Long userId = SecurityUtil.getCurrentUserId(authentication);
+        requireDeviceAccess(authentication, deviceId);
 
         deviceService.deleteUserDevice(userId, deviceId);
 

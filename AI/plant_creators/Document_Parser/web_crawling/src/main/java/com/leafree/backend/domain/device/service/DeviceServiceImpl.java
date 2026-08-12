@@ -74,6 +74,11 @@ public class DeviceServiceImpl implements DeviceService {
     }
 
     @Override
+    public boolean hasDeviceAccess(Long userId, Long deviceId) {
+        return userDeviceRepository.existsById(new UserDeviceId(userId, deviceId));
+    }
+
+    @Override
     public void deleteUserDevice(Long userId, Long deviceId) {
         UserDeviceId userDeviceId = new UserDeviceId(userId, deviceId);
         userDeviceRepository.deleteById(userDeviceId);

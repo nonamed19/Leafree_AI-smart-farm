@@ -107,7 +107,7 @@ public class SettingServiceImpl implements SettingService {
         }
 
         if(request.getSoilHumidity() != null) {
-            Integer oldValue = setting.getOptimalHumidity();
+            Integer oldValue = setting.getOptimalSoilHumidity();
             setting.setOptimalSoilHumidity(request.getSoilHumidity());
 
             if (!request.getSoilHumidity().equals(oldValue)) {

@@ -13,6 +13,14 @@ java {
 	}
 }
 
+// Domain sources were checked in under the AI crawler directory. Keep one
+// authoritative source tree while making them part of the backend build.
+sourceSets {
+    main {
+        java.srcDir '../AI/plant_creators/Document_Parser/web_crawling/src/main/java'
+    }
+}
+
 configurations {
 	compileOnly {
 		extendsFrom annotationProcessor

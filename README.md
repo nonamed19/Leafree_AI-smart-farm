@@ -58,8 +58,10 @@ Leafree(리프리)는 Leaf(잎) + Free(자유롭게)의 의미를 담아, 누구
 #### Backend (Spring Boot)
 
 ```bash
-$ ./gradlew build
-$ docker-compose up
+$ cd backend
+$ gradle build
+$ cd ..
+$ docker build -f backend/Dockerfile -t leafree-backend .
 ```
 
 #### FastAPI (LLM)

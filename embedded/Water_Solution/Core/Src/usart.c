@@ -221,7 +221,9 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
                   rxBuf[1] << 8   |
                   rxBuf[2] << 16  |
                   rxBuf[3] << 24;
-    xQueueSendFromISR(xCtlQ, &w, &hp);
+    if (xCtlQ != NULL) {
+        xQueueSendFromISR(xCtlQ, &w, &hp);
+    }
     portYIELD_FROM_ISR(hp);
     /* 재ARM */
     HAL_UART_Receive_DMA(&huart1, (uint8_t*)&rxBuf, 4);
